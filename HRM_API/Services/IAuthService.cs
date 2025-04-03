@@ -7,5 +7,6 @@ namespace HRM_API.Services
     {
         Task<LoginResponse> Login(LoginRequest request);
         Task<LoginResponse> RefreshToken(string refreshToken);
+        Task<bool> Logout(string refreshToken);
     }
 }

@@ -41,5 +41,16 @@ namespace HRM_API.Controllers
             return Ok(response);
         }
 
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
+        {
+            var result = await _authService.Logout(request.RefreshToken);
+            if (result)
+            {
+                return Ok(new { message = "Logout successful" });
+            }
+            return Unauthorized(new { message = "Invalid Refresh Token" });
+        }
+
     }
 }

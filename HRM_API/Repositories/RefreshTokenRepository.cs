@@ -1,5 +1,6 @@
 ﻿using HRM_API.Data;
 using HRM_API.Models.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace HRM_API.Repositories
 {
@@ -12,11 +13,29 @@ namespace HRM_API.Repositories
             _context = context;
         }
 
+        public async Task DeleteRefreshToken(int userId, string refreshToken)
+        {
+            var token = await _context.RefreshTokens.FirstOrDefaultAsync(t => t.UserId == userId && t.Token == refreshToken);
+            if (token != null)
+            {
+                _context.RefreshTokens.Remove(token);
+                await _context.SaveChangesAsync();
+            }
+            else
+            {
+                throw new InvalidOperationException("Refresh token not found.");
+            }
+        }
+
         public RefreshToken GetRefreshTokenByToken(string refreshToken)
         {
-            return _context.RefreshTokens
-            .FirstOrDefault(rt => rt.Token == refreshToken);
+            var token = _context.RefreshTokens
+                                 .AsNoTracking()
+                                 .FirstOrDefault(rt => rt.Token == refreshToken);
+            if (token == null) return null;
+            return token;
         }
+
 
         public void SaveRefreshToken(int userId, string refreshToken)
         {

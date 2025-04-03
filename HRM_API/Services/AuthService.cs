@@ -46,6 +46,17 @@ namespace HRM_API.Services
             };
         }
 
+        public async Task<bool> Logout(string refreshToken)
+        {
+            var storedRefreshToken = _refreshTokenRepository.GetRefreshTokenByToken(refreshToken);
+            if (storedRefreshToken == null)
+            {
+                return false;
+            }
+            await _refreshTokenRepository.DeleteRefreshToken(storedRefreshToken.UserId, refreshToken);
+            return true;
+        }
+
         public async Task<LoginResponse> RefreshToken(string refreshToken)
         {
             var storedRefreshToken = _refreshTokenRepository.GetRefreshTokenByToken(refreshToken);

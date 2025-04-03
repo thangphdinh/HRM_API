@@ -6,5 +6,6 @@ namespace HRM_API.Repositories
     {
         void SaveRefreshToken(int userId, string refreshToken);
         RefreshToken GetRefreshTokenByToken(string refreshToken);
+        Task DeleteRefreshToken (int userId, string refreshToken);
     }
 }

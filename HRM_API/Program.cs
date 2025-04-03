@@ -56,6 +56,20 @@ builder.Services.AddAuthorization(options =>
 //Add Controllers
 builder.Services.AddControllers();
 
+var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: MyAllowSpecificOrigins,
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:3000") // Next.js chạy ở port 3000
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
+});
+
 var app = builder.Build();
 
 //Using CustomExceptionMiddleware
@@ -63,7 +77,7 @@ app.UseMiddleware<CustomExceptionMiddleware>();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseCors(MyAllowSpecificOrigins);
 app.MapControllers();
 
 app.Run();
