@@ -1,5 +1,6 @@
 ﻿using HRM_API.Common;
 using HRM_API.Models.Entities;
+using HRM_API.Models.Requests;
 using HRM_API.Models.Responses;
 
 namespace HRM_API.Services
@@ -8,5 +9,6 @@ namespace HRM_API.Services
     {
         Task<Result<List<UserResponse>>> GetAllUsersAsync();
         Task<Result<UserResponse>> GetCurrentUserAsync();
+        Task<Result<UserResponse>> CreateUserAsync(CreateUserRequest request);
     }
 }

@@ -1,4 +1,5 @@
-﻿using HRM_API.Services;
+﻿using HRM_API.Models.Requests;
+using HRM_API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -40,6 +41,39 @@ namespace HRM_API.Controllers
             else if (currentUser.Data.Role == "Member")
             {
                 return Forbid();
+            }
+            return Unauthorized();
+        }
+
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+        {
+            var currentUser = await _userService.GetCurrentUserAsync();
+            if (currentUser == null)
+            {
+                return Unauthorized();
+            }
+            if (currentUser.Data.Role == "Member")
+            {
+                return Forbid();
+            }
+            var organizationOfCurrentUser = await _organizationService.GetOrganizationInforByUserIdAsync(currentUser.Data.UserId);
+            if (!organizationOfCurrentUser.Success)
+            {
+                return BadRequest(organizationOfCurrentUser.ErrorMessage);
+            }
+            if (currentUser.Data.Role == "SystemAdmin" || (currentUser.Data.Role == "Admin" && organizationOfCurrentUser.Data.OrganizationId == request.OrganizationId))
+            {
+                var result = await _userService.CreateUserAsync(request);
+                if (result.Success)
+                {
+                    // Trả về mã trạng thái 201 Created với thông tin người dùng mới được tạo
+                    return CreatedAtAction(nameof(GetAllUsers), new { id = result.Data.UserId }, result.Data);
+                }
+                else
+                {
+                    return BadRequest(result.ErrorMessage);
+                }
             }
             return Unauthorized();
         }

@@ -7,6 +7,7 @@ namespace HRM_API.Repositories
         Task<Result<User>> GetUserByEmailAsync(string email);
         Task<Result<User>> GetUserByIdAsync(int userId);
         Task<Result<List<User>>> GetAllUsersAsync();
+        Task<Result<User>> CreateUserAsync(User user);
     }
 }
 

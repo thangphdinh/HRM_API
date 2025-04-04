@@ -15,6 +15,27 @@ namespace HRM_API.Repositories
             _logger = logger;
         }
 
+        public async Task<Result<User>> CreateUserAsync(User user)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Nếu thêm người dùng thành công, trả về kết quả thành công với dữ liệu User
+                return Result<User>.SuccessResult(user);
+            }
+            catch (Exception ex)
+            {
+                // Nếu có lỗi khi thêm người dùng, rollback transaction
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error creating user.");
+                return Result<User>.FailureResult("Error creating user: " + ex.Message);
+            }
+        }
+
         public async Task<Result<List<User>>> GetAllUsersAsync()
         {
             try

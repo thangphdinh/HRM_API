@@ -1,6 +1,7 @@
 ﻿using HRM_API.Common;
 using HRM_API.Data;
 using HRM_API.Models.Entities;
+using HRM_API.Models.Requests;
 using HRM_API.Models.Responses;
 using HRM_API.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -12,16 +13,108 @@ namespace HRM_API.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly IOrganizationRepository _organizationRepository;
+        private readonly IRoleRepository _roleRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<UserService> _logger;
+        private readonly IPasswordHasher _passwordHasher;
 
-        public UserService(IUserRepository userRepository, IOrganizationRepository organizationRepository, IHttpContextAccessor httpContextAccessor, ILogger<UserService> logger)
+        public UserService(IUserRepository userRepository, IOrganizationRepository organizationRepository, IRoleRepository roleRepository, IHttpContextAccessor httpContextAccessor, ILogger<UserService> logger, IPasswordHasher passwordHasher)
         {
             _userRepository = userRepository;
             _organizationRepository = organizationRepository;
+            _roleRepository = roleRepository;
             _httpContextAccessor = httpContextAccessor;
             _logger = logger;
+            _passwordHasher = passwordHasher;
         }
+
+        public async Task<Result<UserResponse>> CreateUserAsync(CreateUserRequest request)
+        {
+            // Kiểm tra các thông tin yêu cầu không được để trống
+            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
+            {
+                return Result<UserResponse>.FailureResult("Username, Email and Password are required.");
+            }
+
+            try
+            {
+                //Kiểm tra xem người dùng đã tồn tại hay chưa
+                var existingUser = await _userRepository.GetUserByEmailAsync(request.Email);
+                if (existingUser.Success && existingUser.Data != null)
+                {
+                    return Result<UserResponse>.FailureResult("User with this email already exists.");
+                }
+
+                // Kiểm tra xem RoleId và OrganizationId có hợp lệ không
+                var role = await _roleRepository.GetRoleByIdAsync(request.RoleId);
+                var organization = await _organizationRepository.GetOrganizationByIdAsync(request.OrganizationId);
+                if (!role.Success)
+                {
+                    return Result<UserResponse>.FailureResult("Role not found.");
+                }
+                if (!organization.Success)
+                {
+                    return Result<UserResponse>.FailureResult("Organization not found.");
+                }
+
+                //Mã hoá dữ liệu
+                var passwordHash = _passwordHasher.HashPassword(request.Password);
+
+                //Claim userId từ HttpContext
+                var userIdClaim = _httpContextAccessor.HttpContext.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                if (userIdClaim == null)
+                {
+                    return Result<UserResponse>.FailureResult("User ID not found in claims.");
+                }
+                var currenUserId = int.Parse(userIdClaim);
+
+                //Tạo người dùng mới
+                var newUser = new User
+                {
+                    Username = request.Username,
+                    Email = request.Email,
+                    PasswordHash = passwordHash,
+                    RoleId = request.RoleId,
+                    OrganizationId = request.OrganizationId,
+                    Status = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatedBy = currenUserId,
+                };
+
+                // Lưu người dùng mới vào cơ sở dữ liệu
+                var result = await _userRepository.CreateUserAsync(newUser);
+
+                // Kiểm tra kết quả trả về từ repository
+                if (result.Success)
+                {
+                    // Nếu thành công, dựng UserResponse từ dữ liệu người dùng mới
+                    var userResponse = new UserResponse
+                    {
+                        UserId = result.Data.UserId,
+                        Username = result.Data.Username,
+                        Email = result.Data.Email,
+                        Role = role.Data.RoleName,
+                        Organization = organization.Data.OrganizationName,
+                        Status = result.Data.Status
+                    };
+                    return Result<UserResponse>.SuccessResult(userResponse);
+                }
+                else
+                {
+                    // Nếu không thành công, trả về kết quả thất bại
+                    _logger.LogWarning($"Failed to create user: {result.ErrorMessage}");
+                    return Result<UserResponse>.FailureResult(result.ErrorMessage, result.ErrorCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Nếu có lỗi xảy ra trong quá trình xử lý, trả về kết quả thất bại
+                _logger.LogError(ex, "Error creating user");
+                return Result<UserResponse>.FailureResult("Error creating user: " + ex.Message);
+            }
+        }
+
         public async Task<Result<List<UserResponse>>> GetAllUsersAsync()
         {
             try
