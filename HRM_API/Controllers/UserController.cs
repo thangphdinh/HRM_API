@@ -26,18 +26,18 @@ namespace HRM_API.Controllers
             {
                 return Unauthorized();
             }
-            if(currentUser.Role == "SystemAdmin")
+            if(currentUser.Data.Role == "SystemAdmin")
             {
                 var users = await _userService.GetAllUsersAsync();
-                return Ok(users);   
+                return Ok(users.Data);   
             }
-            else if (currentUser.Role == "Admin")
+            else if (currentUser.Data.Role == "Admin")
             {
-                var organizationId = await _organizationService.GetOrganizationIdByUserIdAsync(currentUser.UserId);
-                var users = await _organizationService.GetUsersByOrganizationAsync(organizationId);
-                return Ok(users);
+                var organizationResult= await _organizationService.GetOrganizationInforByUserIdAsync(currentUser.Data.UserId);
+                var users = await _organizationService.GetUsersByOrganizationAsync(organizationResult.Data.OrganizationId);
+                return Ok(users.Data);
             }
-            else if (currentUser.Role == "Member")
+            else if (currentUser.Data.Role == "Member")
             {
                 return Forbid();
             }

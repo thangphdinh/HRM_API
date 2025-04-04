@@ -1,11 +1,12 @@
-﻿using HRM_API.Models.Entities;
+﻿using HRM_API.Common;
+using HRM_API.Models.Entities;
 namespace HRM_API.Repositories
 {
     public interface IUserRepository
     {
-        Task<User> GetUserByEmailAsync(string email);
-        Task<User> GetUserByIdAsync(int userId);
-        Task<List<User>> GetAllUsersAsync();
+        Task<Result<User>> GetUserByEmailAsync(string email);
+        Task<Result<User>> GetUserByIdAsync(int userId);
+        Task<Result<List<User>>> GetAllUsersAsync();
     }
 }
 

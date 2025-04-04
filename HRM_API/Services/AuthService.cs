@@ -1,7 +1,9 @@
-﻿using HRM_API.Models.Entities;
+﻿using HRM_API.Common;
+using HRM_API.Models.Entities;
 using HRM_API.Models.Requests;
 using HRM_API.Models.Responses;
 using HRM_API.Repositories;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -15,75 +17,78 @@ namespace HRM_API.Services
         private readonly IUserRepository _userRepository;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly IConfiguration _configuration;
+        private readonly IOptions<JwtSettings> _jwtSettings;
 
-        public AuthService(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, IConfiguration configuration)
+        public AuthService(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, IConfiguration configuration, IOptions<JwtSettings> jwtSettings)
         {
             _userRepository = userRepository;
             _refreshTokenRepository = refreshTokenRepository;
             _configuration = configuration;
+            _jwtSettings = jwtSettings;
         }
-        public async Task<LoginResponse> Login(LoginRequest request)
+        public async Task<Result<LoginResponse>> Login(LoginRequest request)
         {
             // Kiểm tra xem user có tồn tại không
             var user = await _userRepository.GetUserByEmailAsync(request.Email);
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Data.PasswordHash))
             {
-                throw new UnauthorizedAccessException("Invalid email or password");
+               return Result<LoginResponse>.FailureResult("Invalid email or password");
             }
-
             // Tạo JWT AccessToken
-            var accessToken = GenerateAccessToken(user);
+            var accessToken = GenerateAccessToken(user.Data);
             var refreshToken = GenerateRefreshToken();
-
             // Lưu RefreshToken vào database
-            _refreshTokenRepository.SaveRefreshToken(user.UserId, refreshToken);
-
+            await _refreshTokenRepository.SaveRefreshTokenAsync(user.Data.UserId, refreshToken);
             // Trả về AccessToken & RefreshToken
-            return new LoginResponse
+            return Result<LoginResponse>.SuccessResult(new LoginResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken
-            };
+            });
         }
 
-        public async Task<bool> Logout(string refreshToken)
+        public async Task<Result<bool>> Logout(string refreshToken)
         {
-            var storedRefreshToken = _refreshTokenRepository.GetRefreshTokenByToken(refreshToken);
-            if (storedRefreshToken == null)
+            var storedRefreshToken = await _refreshTokenRepository.GetRefreshTokenByTokenAsync(refreshToken);
+            // Kiểm tra kết quả trả về từ repository (thành công và dữ liệu không null)
+            if (!storedRefreshToken.Success || storedRefreshToken.Data == null)
             {
-                return false;
+                return Result<bool>.FailureResult("Refresh token not found or invalid.");
             }
-            await _refreshTokenRepository.DeleteRefreshToken(storedRefreshToken.UserId, refreshToken);
-            return true;
+            // Xóa RefreshToken khỏi database
+            await _refreshTokenRepository.DeleteRefreshTokenAsync(storedRefreshToken.Data.UserId, refreshToken);
+            return Result<bool>.SuccessResult(true);
         }
 
-        public async Task<LoginResponse> RefreshToken(string refreshToken)
+        public async Task<Result<LoginResponse>> RefreshToken(string refreshToken)
         {
-            var storedRefreshToken = _refreshTokenRepository.GetRefreshTokenByToken(refreshToken);
-            if (storedRefreshToken == null || storedRefreshToken.ExpiryDate < DateTime.UtcNow)
+            var storedRefreshToken = await _refreshTokenRepository.GetRefreshTokenByTokenAsync(refreshToken);
+            if (storedRefreshToken.Data == null || storedRefreshToken.Data.ExpiryDate < DateTime.UtcNow)
             {
-                return null;
+                return Result<LoginResponse>.FailureResult("Refresh token NOT FOUND or EXP");
             }
-
-            var user = await _userRepository.GetUserByIdAsync(storedRefreshToken.UserId);
+            var user = await _userRepository.GetUserByIdAsync(storedRefreshToken.Data.UserId);
             if (user == null)
             {
-                return null;
+                return Result<LoginResponse>.FailureResult("User not found."); ;
             }
-
             // Tạo access token mới
-            var accessToken = GenerateAccessToken(user);
-
-            return new LoginResponse
+            var accessToken = GenerateAccessToken(user.Data);
+            return Result< LoginResponse>.SuccessResult(new LoginResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken
-            };
+            });
         }
 
         private string GenerateAccessToken(User user)
         {
-            var key = Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]);
+            var secretKey = _jwtSettings.Value.SecretKey;
+            if (string.IsNullOrEmpty(secretKey))
+            {
+                throw new InvalidOperationException("JWT SecretKey is not configured.");
+            }
+            var key = Encoding.UTF8.GetBytes(secretKey);
             var tokenHandler = new JwtSecurityTokenHandler();
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -93,7 +98,7 @@ namespace HRM_API.Services
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.Role, user.Role.RoleName)
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["JwtSettings:AccessTokenExpireMinutes"])),
+                Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.Value.AccessTokenExpireMinutes),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 

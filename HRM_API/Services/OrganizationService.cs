@@ -1,6 +1,8 @@
-﻿using HRM_API.Data;
+﻿using HRM_API.Common;
+using HRM_API.Data;
 using HRM_API.Models.Entities;
 using HRM_API.Models.Responses;
+using HRM_API.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace HRM_API.Services
@@ -8,40 +10,56 @@ namespace HRM_API.Services
     public class OrganizationService : IOrganizationService
     {
         private readonly AppDbContext _context;
+        private readonly IOrganizationRepository _organizationRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly ILogger<OrganizationService> _logger;
 
-        public OrganizationService(AppDbContext context)
+        public OrganizationService(AppDbContext context, IOrganizationRepository organizationRepository, IUserRepository userRepository, ILogger<OrganizationService> logger)
         {
             _context = context;
-        }
-        public async Task<int> GetOrganizationIdByUserIdAsync(int userId)
-        {
-            var user = await _context.Users.Where(u => u.UserId == userId)
-                                           .Select(u => u.OrganizationId)
-                                           .FirstOrDefaultAsync();
-
-            return user;
+            _organizationRepository = organizationRepository;
+            _userRepository = userRepository;
+            _logger = logger;
         }
 
-        public async Task<string> GetOrganizationNameByUserIdAsync(int userId)
+        public async Task<Result<OrganizationResponse>> GetOrganizationInforByUserIdAsync(int userId)
         {
-            var organizationId = await GetOrganizationIdByUserIdAsync(userId);
+            // Lấy organizationId từ userId
+            var orgIdResult = await _organizationRepository.GetOrganizationIdByUserIdAsync(userId);
+            if (!orgIdResult.Success || orgIdResult.Data == null)
+            {
+                // Nếu không tìm thấy organizationId, trả về kết quả thất bại
+                _logger.LogWarning($"OrganizationId not found for UserId {userId}: {orgIdResult.ErrorMessage}");
+                return Result<OrganizationResponse>.FailureResult(orgIdResult.ErrorMessage);
+            }
 
-            var organizationName = await _context.Organizations
-                .Where(o => o.OrganizationId == organizationId)
-                .Select(o => o.OrganizationName)
-                .FirstOrDefaultAsync();
+            // Lấy organization details từ id
+            var orgResult = await _organizationRepository.GetOrganizationByIdAsync(orgIdResult.Data.Value);
+            if (!orgResult.Success || orgResult.Data == null)
+            {
+                // Nếu không tìm thấy organization, trả về kết quả thất bại
+                _logger.LogWarning($"Organization not found for OrganizationId {orgIdResult.Data.Value}: {orgResult.ErrorMessage}");
+                return Result<OrganizationResponse>.FailureResult(orgResult.ErrorMessage);
+            }
 
-            return organizationName;
+            // Tạo response
+            var response = new OrganizationResponse
+            {
+                OrganizationId = orgResult.Data.OrganizationId,
+                OrganizationName = orgResult.Data.OrganizationName
+            };
+
+            return Result<OrganizationResponse>.SuccessResult(response);
         }
 
-        public async Task<List<UserResponse>> GetUsersByOrganizationAsync(int organizationId)
+        public async Task<Result<List<UserResponse>>> GetUsersByOrganizationAsync(int organizationId)
         {
-            var users = await _context.Users
-                .Where(u => u.OrganizationId == organizationId)
-                .Include(u => u.Role)
-                .Include(u => u.Organization)
-                .ToListAsync();
-            var userResponses = users.Select(u => new UserResponse
+            var usersResult = await _organizationRepository.GetUsersByOrganizationIdAsync(organizationId);
+
+            if (!usersResult.Success)
+                return Result<List<UserResponse>>.FailureResult(usersResult.ErrorMessage);
+
+            var userResponses = usersResult.Data.Select(u => new UserResponse
             {
                 UserId = u.UserId,
                 Username = u.Username,
@@ -50,7 +68,8 @@ namespace HRM_API.Services
                 Organization = u.Organization.OrganizationName,
                 Status = u.Status
             }).ToList();
-            return userResponses;
+
+            return Result<List<UserResponse>>.SuccessResult(userResponses);
         }
     }
 }

@@ -20,8 +20,12 @@ namespace HRM_API.Controllers
         {
             try
             {
-                var response = await _authService.Login(request);
-                return Ok(response);
+                var result = await _authService.Login(request);
+                if (result.Success)
+                {
+                    return Ok(result.Data);
+                }
+                return BadRequest(new { message = result.ErrorMessage, errorCode = result.ErrorCode });
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -32,24 +36,24 @@ namespace HRM_API.Controllers
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
         {
-            var response = await _authService.RefreshToken(request.RefreshToken);
-            if (response == null)
+            var result = await _authService.RefreshToken(request.RefreshToken);
+            if (result == null || !result.Success)
             {
-                return Unauthorized(new { message = "Invalid Refresh Token" });
+                return Unauthorized(new { message = "Invalid Refresh Token", errorCode = 401 });
             }
 
-            return Ok(response);
+            return Ok(result.Data);
         }
 
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
         {
             var result = await _authService.Logout(request.RefreshToken);
-            if (result)
+            if (result.Success)
             {
                 return Ok(new { message = "Logout successful" });
             }
-            return Unauthorized(new { message = "Invalid Refresh Token" });
+            return Unauthorized(new { message = "Invalid Refresh Token", errorCode = 401 });
         }
 
     }
