@@ -74,10 +74,14 @@ var app = builder.Build();
 
 //Using CustomExceptionMiddleware
 app.UseMiddleware<CustomExceptionMiddleware>();
+
 app.UseHttpsRedirection();
+
+app.UseCors(MyAllowSpecificOrigins);
+
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseCors(MyAllowSpecificOrigins);
+
 app.MapControllers();
 
 app.Run();
