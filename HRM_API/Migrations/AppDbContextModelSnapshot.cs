@@ -51,15 +51,19 @@ namespace HRM_API.Migrations
 
                     b.HasKey("OrganizationId");
 
+                    b.HasIndex("LicenseKey")
+                        .IsUnique();
+
                     b.ToTable("Organizations");
 
                     b.HasData(
                         new
                         {
                             OrganizationId = 1,
-                            CreatedAt = new DateTime(2025, 4, 3, 4, 23, 23, 337, DateTimeKind.Utc).AddTicks(8919),
+                            CreatedAt = new DateTime(2025, 4, 3, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             LicenseKey = "ROOT_KEY",
-                            OrganizationName = "SYSTEM"
+                            OrganizationName = "SYSTEM",
+                            UpdatedAt = new DateTime(2025, 4, 3, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
                 });
 
@@ -114,14 +118,8 @@ namespace HRM_API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime>("ExpiryDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsRevoked")
-                        .HasColumnType("bit");
 
                     b.Property<string>("Token")
                         .IsRequired()
@@ -146,9 +144,6 @@ namespace HRM_API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoleId"));
 
-                    b.Property<int>("OrganizationId")
-                        .HasColumnType("int");
-
                     b.Property<string>("RoleName")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -156,7 +151,8 @@ namespace HRM_API.Migrations
 
                     b.HasKey("RoleId");
 
-                    b.HasIndex("OrganizationId");
+                    b.HasIndex("RoleName")
+                        .IsUnique();
 
                     b.ToTable("Roles");
 
@@ -164,7 +160,6 @@ namespace HRM_API.Migrations
                         new
                         {
                             RoleId = 1,
-                            OrganizationId = 1,
                             RoleName = "SystemAdmin"
                         });
                 });
@@ -214,6 +209,9 @@ namespace HRM_API.Migrations
 
                     b.HasIndex("CreatedBy");
 
+                    b.HasIndex("Email")
+                        .IsUnique();
+
                     b.HasIndex("OrganizationId");
 
                     b.HasIndex("RoleId");
@@ -227,7 +225,7 @@ namespace HRM_API.Migrations
                             CreatedAt = new DateTime(2025, 4, 3, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Email = "sysadmin@hrm.com",
                             OrganizationId = 1,
-                            PasswordHash = "$2a$11$S8706Ei0XRzAvnT/aIz9vu55NA8m.gx2bL5Yf4FAcGf3wEuVpXL8q",
+                            PasswordHash = "$2b$12$46nJBfmAtQzAMngec9IHEOaxl/WGYr09sqD6oNXAZb.dZqemc7LHa",
                             RoleId = 1,
                             Status = true,
                             UpdatedAt = new DateTime(2025, 4, 3, 0, 0, 0, 0, DateTimeKind.Unspecified),
@@ -257,23 +255,12 @@ namespace HRM_API.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("HRM_API.Models.Entities.Role", b =>
-                {
-                    b.HasOne("HRM_API.Models.Entities.Organization", "Organization")
-                        .WithMany("Roles")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Organization");
-                });
-
             modelBuilder.Entity("HRM_API.Models.Entities.User", b =>
                 {
                     b.HasOne("HRM_API.Models.Entities.User", "CreatedByUser")
                         .WithMany("CreatedUsers")
                         .HasForeignKey("CreatedBy")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("HRM_API.Models.Entities.Organization", "Organization")
                         .WithMany("Users")
@@ -296,8 +283,6 @@ namespace HRM_API.Migrations
 
             modelBuilder.Entity("HRM_API.Models.Entities.Organization", b =>
                 {
-                    b.Navigation("Roles");
-
                     b.Navigation("Users");
                 });
 

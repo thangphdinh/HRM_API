@@ -24,7 +24,5 @@ namespace HRM_API.Models.Entities
 
         // Navigation Properties
         public virtual ICollection<User> Users { get; set; }
-        public virtual ICollection<Role> Roles { get; set; }
     }
-
 }
