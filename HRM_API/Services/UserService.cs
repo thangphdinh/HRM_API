@@ -61,7 +61,7 @@ namespace HRM_API.Services
                 var passwordHash = _passwordHasher.HashPassword(request.Password);
 
                 //Claim userId từ HttpContext
-                var userIdClaim = _httpContextAccessor.HttpContext.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var userIdClaim = _httpContextAccessor.HttpContext?.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
                 if (userIdClaim == null)
                 {
                     return Result<UserResponse>.FailureResult("User ID not found in claims.");
@@ -157,7 +157,7 @@ namespace HRM_API.Services
             try
             {
                 // Lấy email từ claim của người dùng hiện tại
-                var userEmail = _httpContextAccessor.HttpContext.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+                var userEmail = _httpContextAccessor.HttpContext?.User?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
 
                 // Nếu không có email trong claim thì trả về kết quả thất bại
                 if (userEmail == null)
