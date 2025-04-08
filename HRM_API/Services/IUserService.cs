@@ -10,5 +10,6 @@ namespace HRM_API.Services
         Task<Result<List<UserResponse>>> GetAllUsersAsync();
         Task<Result<UserResponse>> GetCurrentUserAsync();
         Task<Result<UserResponse>> CreateUserAsync(CreateUserRequest request);
+        Task<Result<UserDetailResponse>> GetUserDetailAsync(int userId);
     }
 }

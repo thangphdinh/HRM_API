@@ -77,5 +77,40 @@ namespace HRM_API.Controllers
             }
             return Unauthorized();
         }
+
+        [HttpGet("{userId}")]
+        public async Task<IActionResult> GetUserDetail(int userId)
+        {
+            //Lấy thông tin người dùng hiện tại
+            var currentUser = await _userService.GetCurrentUserAsync();
+            if (currentUser == null)
+            {
+                return Unauthorized();
+            }
+
+            //Check quyền
+            if (currentUser.Data.Role == "Member" && currentUser.Data.UserId != userId)
+            {
+                return Forbid();
+            }
+            if (currentUser.Data.Role == "Admin")
+            {
+                var currentOrganizationResult = await _organizationService.GetOrganizationInforByUserIdAsync(currentUser.Data.UserId);
+                var targetOrganizationResult = await _organizationService.GetOrganizationInforByUserIdAsync(userId);
+
+                if(!currentOrganizationResult.Success || !targetOrganizationResult.Success || currentOrganizationResult.Data.OrganizationId != targetOrganizationResult.Data.OrganizationId)
+                {
+                    return Forbid();
+                } 
+            }
+
+            var result = await _userService.GetUserDetailAsync(userId);
+            if (!result.Success)
+            {
+                return NotFound(result.ErrorMessage);
+            }
+
+            return Ok(result.Data);
+        }
     }
 }

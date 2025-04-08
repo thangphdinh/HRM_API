@@ -4,6 +4,7 @@ using HRM_API.Models.Entities;
 using HRM_API.Models.Requests;
 using HRM_API.Models.Responses;
 using HRM_API.Repositories;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -14,11 +15,12 @@ namespace HRM_API.Services
         private readonly IUserRepository _userRepository;
         private readonly IOrganizationRepository _organizationRepository;
         private readonly IRoleRepository _roleRepository;
+        private readonly IProfileRepository _profileRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<UserService> _logger;
         private readonly IPasswordHasher _passwordHasher;
 
-        public UserService(IUserRepository userRepository, IOrganizationRepository organizationRepository, IRoleRepository roleRepository, IHttpContextAccessor httpContextAccessor, ILogger<UserService> logger, IPasswordHasher passwordHasher)
+        public UserService(IUserRepository userRepository, IOrganizationRepository organizationRepository, IRoleRepository roleRepository, IHttpContextAccessor httpContextAccessor, ILogger<UserService> logger, IPasswordHasher passwordHasher, IProfileRepository profileRepository)
         {
             _userRepository = userRepository;
             _organizationRepository = organizationRepository;
@@ -26,6 +28,7 @@ namespace HRM_API.Services
             _httpContextAccessor = httpContextAccessor;
             _logger = logger;
             _passwordHasher = passwordHasher;
+            _profileRepository = profileRepository;
         }
 
         public async Task<Result<UserResponse>> CreateUserAsync(CreateUserRequest request)
@@ -194,6 +197,62 @@ namespace HRM_API.Services
             {
                 // Nếu có lỗi xảy ra trong quá trình xử lý, trả về kết quả thất bại
                 return Result<UserResponse>.FailureResult("Error fetching current user: " + ex.Message);
+            }
+        }
+
+        public async Task<Result<UserDetailResponse>> GetUserDetailAsync(int userId)
+        {
+            try
+            {
+                var userResult = await _userRepository.GetUserByIdAsync(userId);
+                if (!userResult.Success)
+                {
+                    _logger.LogWarning($"Failed to fetch user: {userResult.ErrorMessage}");
+                    return Result<UserDetailResponse>.FailureResult(userResult.ErrorMessage, userResult.ErrorCode);
+                }
+                var user = userResult.Data;
+
+                var profileResult = await _profileRepository.GetProfileByUserIdAsync(userId);
+                var profile = profileResult.Success ? profileResult.Data : null;
+
+                var organizationResult = await _organizationRepository.GetOrganizationByIdAsync(user.OrganizationId);
+                var organization = organizationResult.Success ? organizationResult.Data : null;
+
+                var response = new UserDetailResponse
+                {
+                    UserId = user.UserId,
+                    Username = user.Username,
+                    Email = user.Email,
+                    Role = user.Role.RoleName,
+                    Organization = user.Organization.OrganizationName,
+                    Status = user.Status,
+                    Profile = profile != null ? new ProfileResponse
+                    {
+                        FirstName = profile.FirstName,
+                        MiddleName = profile.MiddleName,
+                        LastName = profile.LastName,
+                        BirthDate = profile.BirthDate,
+                        Gender = profile.Gender,
+                        AvatarUrl = profile.AvatarUrl,
+                        PhoneNumber = profile.PhoneNumber,
+                        EmailProfile = profile.EmailProfile,
+                        Address = profile.Address,
+                        Nationality = profile.Nationality,
+                        IdentityNumber = profile.IdentityNumber,
+                        TaxCode = profile.TaxCode,
+                        MaritalStatus = profile.MaritalStatus,
+                        Position = profile.Position,
+                        Department = profile.Department,
+                        JoinDate = profile.JoinDate,
+                        ResignDate = profile.ResignDate
+                    } : null
+                };
+                return Result<UserDetailResponse>.SuccessResult(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching user detail");
+                return Result<UserDetailResponse>.FailureResult("Error fetching user detail: " + ex.Message);
             }
         }
     }
