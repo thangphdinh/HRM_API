@@ -9,16 +9,12 @@ namespace HRM_API.Services
 {
     public class OrganizationService : IOrganizationService
     {
-        private readonly AppDbContext _context;
         private readonly IOrganizationRepository _organizationRepository;
-        private readonly IUserRepository _userRepository;
         private readonly ILogger<OrganizationService> _logger;
 
-        public OrganizationService(AppDbContext context, IOrganizationRepository organizationRepository, IUserRepository userRepository, ILogger<OrganizationService> logger)
+        public OrganizationService(IOrganizationRepository organizationRepository, ILogger<OrganizationService> logger)
         {
-            _context = context;
             _organizationRepository = organizationRepository;
-            _userRepository = userRepository;
             _logger = logger;
         }
 

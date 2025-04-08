@@ -16,21 +16,21 @@ namespace HRM_API.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
-        private readonly IConfiguration _configuration;
         private readonly IOptions<JwtSettings> _jwtSettings;
+        private readonly IPasswordHasher _passwordHasher;
 
-        public AuthService(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, IConfiguration configuration, IOptions<JwtSettings> jwtSettings)
+        public AuthService(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, IOptions<JwtSettings> jwtSettings, IPasswordHasher passwordHasher)
         {
             _userRepository = userRepository;
             _refreshTokenRepository = refreshTokenRepository;
-            _configuration = configuration;
             _jwtSettings = jwtSettings;
+            _passwordHasher = passwordHasher;
         }
         public async Task<Result<LoginResponse>> Login(LoginRequest request)
         {
             // Kiểm tra xem user có tồn tại không
             var user = await _userRepository.GetUserByEmailAsync(request.Email);
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Data.PasswordHash))
+            if (user == null || !_passwordHasher.VerifyPassword(request.Password, user.Data.PasswordHash))
             {
                return Result<LoginResponse>.FailureResult("Invalid email or password");
             }
