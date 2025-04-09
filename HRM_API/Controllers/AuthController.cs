@@ -1,5 +1,6 @@
 ﻿using HRM_API.Models.Requests;
 using HRM_API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HRM_API.Controllers
@@ -9,10 +10,12 @@ namespace HRM_API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IUserService _userService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IUserService userService)
         {
             _authService = authService;
+            _userService = userService;
         }
 
         [HttpPost("login")]
@@ -56,5 +59,15 @@ namespace HRM_API.Controllers
             return Unauthorized(new { message = "Invalid Refresh Token", errorCode = 401 });
         }
 
+        [HttpGet("me")]
+        [Authorize] // đảm bảo chỉ người đã đăng nhập mới gọi được
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            var currentUserResult = await _userService.GetCurrentUserAsync();
+            if (!currentUserResult.Success)
+                return BadRequest(currentUserResult.ErrorMessage);
+
+            return Ok(currentUserResult.Data);
+        }
     }
 }
