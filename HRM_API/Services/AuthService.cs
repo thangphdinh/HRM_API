@@ -30,13 +30,17 @@ namespace HRM_API.Services
         {
             // Kiểm tra xem user có tồn tại không
             var user = await _userRepository.GetUserByEmailAsync(request.Email);
+            if (!user.Success || user.Data == null)
+            {
+                return Result<LoginResponse>.FailureResult("Invalid email or password");
+            }
             if (user.Data.Status == false)
             {
                 return Result<LoginResponse>.FailureResult("User is not active");
             }
-            if (user == null || !_passwordHasher.VerifyPassword(user.Data.PasswordHash, request.Password))
+            if (!_passwordHasher.VerifyPassword(user.Data.PasswordHash, request.Password))
             {
-               return Result<LoginResponse>.FailureResult("Invalid email or password");
+                return Result<LoginResponse>.FailureResult("Invalid email or password");
             }
             // Tạo JWT AccessToken
             var accessToken = GenerateAccessToken(user.Data);
