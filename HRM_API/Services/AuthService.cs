@@ -30,6 +30,10 @@ namespace HRM_API.Services
         {
             // Kiểm tra xem user có tồn tại không
             var user = await _userRepository.GetUserByEmailAsync(request.Email);
+            if (user.Data.Status == false)
+            {
+                return Result<LoginResponse>.FailureResult("User is not active");
+            }
             if (user == null || !_passwordHasher.VerifyPassword(user.Data.PasswordHash, request.Password))
             {
                return Result<LoginResponse>.FailureResult("Invalid email or password");

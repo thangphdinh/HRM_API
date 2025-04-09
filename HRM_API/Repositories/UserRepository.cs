@@ -98,7 +98,7 @@ namespace HRM_API.Repositories
             {
                 var user = await _context.Users
                                           .Include(u => u.Role)
-                                          .FirstOrDefaultAsync(u => u.UserId == userId && u.Status);
+                                          .FirstOrDefaultAsync(u => u.UserId == userId);
 
                 // Nếu không tìm thấy người dùng, trả về kết quả thất bại
                 if (user == null)
