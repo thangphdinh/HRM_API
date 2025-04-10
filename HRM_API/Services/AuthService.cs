@@ -42,8 +42,10 @@ namespace HRM_API.Services
             {
                 return Result<LoginResponse>.FailureResult("Invalid email or password");
             }
+            // Kiểm tra thời gian hết hạn của token có rememberMe
+            var expireMinutes = request.RememberMe ? 60 * 24 : (int?)null;
             // Tạo JWT AccessToken
-            var accessToken = GenerateAccessToken(user.Data);
+            var accessToken = GenerateAccessToken(user.Data, expireMinutes);
             var refreshToken = GenerateRefreshToken();
             // Lưu RefreshToken vào database
             await _refreshTokenRepository.SaveRefreshTokenAsync(user.Data.UserId, refreshToken);
@@ -89,7 +91,7 @@ namespace HRM_API.Services
             });
         }
 
-        private string GenerateAccessToken(User user)
+        private string GenerateAccessToken(User user, int? expireMinutes = null)
         {
             var secretKey = _jwtSettings.Value.SecretKey;
             if (string.IsNullOrEmpty(secretKey))
@@ -98,6 +100,7 @@ namespace HRM_API.Services
             }
             var key = Encoding.UTF8.GetBytes(secretKey);
             var tokenHandler = new JwtSecurityTokenHandler();
+            var expires = DateTime.UtcNow.AddMinutes(expireMinutes ?? _jwtSettings.Value.AccessTokenExpireMinutes);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
@@ -106,7 +109,7 @@ namespace HRM_API.Services
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.Role, user.Role.RoleName)
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.Value.AccessTokenExpireMinutes),
+                Expires = expires,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
