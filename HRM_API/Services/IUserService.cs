@@ -1,5 +1,4 @@
 ﻿using HRM_API.Common;
-using HRM_API.Models.Entities;
 using HRM_API.Models.Requests;
 using HRM_API.Models.Responses;
 

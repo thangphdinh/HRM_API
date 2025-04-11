@@ -14,6 +14,31 @@ namespace HRM_API.Repositories
             _context = context;
             _logger = logger;
         }
+
+        public async Task<Result<List<Role>>> GetAllRolesAsync()
+        {
+            try
+            {
+                var roles = await _context.Roles.OrderBy(r => r.RoleId).ToListAsync();
+
+                // Nếu roles null hoặc rỗng, trả về kết quả thất bại
+                if (roles == null || !roles.Any())
+                {
+                    _logger.LogWarning($"No roles found in database");
+                    return Result<List<Role>>.FailureResult("No roles found");
+                }
+
+                // Nếu tìm thấy roles, trả về kết quả thành công với dữ liệu roles
+                return Result<List<Role>>.SuccessResult(roles);
+            }
+            catch (Exception ex)
+            {
+                // Nếu có lỗi trong quá trình truy vấn, trả về kết quả thất bại
+                _logger.LogError(ex, "Error fetching roles.");
+                return Result<List<Role>>.FailureResult("Error fetching roles: " + ex.Message);
+            }
+        }
+
         public async Task<Result<Role>> GetRoleByIdAsync(int roleId)
         {
             try

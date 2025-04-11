@@ -6,5 +6,6 @@ namespace HRM_API.Repositories
     public interface IRoleRepository
     {
         Task<Result<Role>> GetRoleByIdAsync(int roleId);
+        Task<Result<List<Role>>> GetAllRolesAsync();
     }
 }

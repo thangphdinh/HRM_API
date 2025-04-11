@@ -26,6 +26,7 @@ builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
 
 //Add Repositories to the container
 builder.Services.AddScoped<IUserRepository, UserRepository>();

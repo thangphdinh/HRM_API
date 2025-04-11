@@ -1,4 +1,5 @@
-﻿using HRM_API.Models.Requests;
+﻿using HRM_API.Common.Enums;
+using HRM_API.Models.Requests;
 using HRM_API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,21 +28,28 @@ namespace HRM_API.Controllers
             {
                 return Unauthorized();
             }
-            if(currentUser.Data.Role == "SystemAdmin")
+
+            if (!Enum.TryParse<RoleEnum>(currentUser.Data.Role, out var roleEnum))
+            {
+                return BadRequest();
+            }
+
+            if (roleEnum == RoleEnum.SystemAdmin)
             {
                 var users = await _userService.GetAllUsersAsync();
-                return Ok(users.Data);   
+                return Ok(users.Data);
             }
-            else if (currentUser.Data.Role == "Admin")
+            else if (roleEnum == RoleEnum.Admin)
             {
-                var organizationResult= await _organizationService.GetOrganizationInforByUserIdAsync(currentUser.Data.UserId);
+                var organizationResult = await _organizationService.GetOrganizationInforByUserIdAsync(currentUser.Data.UserId);
                 var users = await _organizationService.GetUsersByOrganizationAsync(organizationResult.Data.OrganizationId);
                 return Ok(users.Data);
             }
-            else if (currentUser.Data.Role == "Member")
+            else if (roleEnum == RoleEnum.Member)
             {
                 return Forbid();
             }
+
             return Unauthorized();
         }
 

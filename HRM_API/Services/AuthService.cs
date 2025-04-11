@@ -107,7 +107,9 @@ namespace HRM_API.Services
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                     new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Role, user.Role.RoleName)
+                    new Claim(ClaimTypes.Role, user.Role.RoleName),
+                    new Claim("Username", user.Username),
+                    new Claim("OrganizationName", user.Organization.OrganizationName)
                 }),
                 Expires = expires,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
